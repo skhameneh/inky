@@ -6,8 +6,8 @@ const path = require("path");
 const Inklecate = require("./inklecate.js").Inklecate;
 
 const electronWindowOptions = {
-  width: 1300, 
-  height: 730, 
+  width: 1300,
+  height: 730,
   minWidth: 350,
   minHeight: 250,
   titleBarStyle: 'hidden',
@@ -62,6 +62,10 @@ ProjectWindow.prototype.exportForWeb = function() {
     this.browserWindow.webContents.send('project-export-for-web');
 }
 
+ProjectWindow.prototype.exportForLBRY = function() {
+    this.browserWindow.webContents.send('project-export-for-lbry');
+}
+
 ProjectWindow.prototype.exportJSOnly = function() {
     this.browserWindow.webContents.send('project-export-js-only');
 }
@@ -85,7 +89,7 @@ ProjectWindow.prototype.openDevTools = function() {
 }
 
 ProjectWindow.createEmpty = function() {
-    return new ProjectWindow(); 
+    return new ProjectWindow();
 }
 
 ProjectWindow.focused = function() {

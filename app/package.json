@@ -36,6 +36,7 @@
     "chokidar": "^2.0.4",
     "fuzzaldrin-plus": "^0.5",
     "inkjs": "^1.7.1",
+    "lbry-format": "git+https://github.com/lbryio/lbry-format.git",
     "lodash": "^4.17.10",
     "mkdirp": "^0.5.1",
     "randomstring": "^1.1.5"

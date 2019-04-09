@@ -6,6 +6,7 @@ const fs = require("fs");
 const _ = require("lodash");
 const chokidar = require('chokidar');
 const mkdirp = require('mkdirp');
+const lbryFormat = require('lbry-format');
 
 const EditorView = require("./editorView.js").EditorView;
 const NavView = require("./navView.js").NavView;
@@ -38,7 +39,7 @@ function InkProject(mainInkFilePath) {
 
 InkProject.prototype.createInkFile = function(anyPath) {
     var inkFile = new InkFile(anyPath || null, this.mainInk, {
-        fileChanged: () => { 
+        fileChanged: () => {
             if( inkFile.hasUnsavedChanges && !this.unsavedFiles.contains(inkFile) ) {
                 this.unsavedFiles.push(inkFile);
                 this.refreshUnsavedChanges();
@@ -50,7 +51,7 @@ InkProject.prototype.createInkFile = function(anyPath) {
         },
 
         // Called when InkFile finds an INCUDE line in the contents of the file
-        includesChanged: () => {         
+        includesChanged: () => {
             this.refreshIncludes();
             if( inkFile.includes.length > 0  )
                 NavView.initialShow();
@@ -262,7 +263,7 @@ function copyFile(source, destination, transform) {
         if( !err && fileContent ) {
             if( transform ) fileContent = transform(fileContent);
             if( fileContent.length < 1 ) throw "Trying to write (copy) empty file!";
-            
+
             fs.writeFile(destination, fileContent, "utf8");
         }
     });
@@ -272,7 +273,7 @@ function copyFile(source, destination, transform) {
 InkProject.prototype.export = function(exportType) {
 
     // Always start by building the JSON
-    var inkJsCompatible = exportType == "js" || exportType == "web";
+    var inkJsCompatible = exportType == "js" || exportType == "web" || exportType == "lbry";
     LiveCompiler.exportJson(inkJsCompatible, (err, compiledJsonTempPath) => {
         if( err ) {
             alert("Could not export: "+err);
@@ -317,7 +318,7 @@ InkProject.prototype.export = function(exportType) {
         }
 
         dialog.showSaveDialog(remote.getCurrentWindow(), saveOptions, (targetSavePath) => {
-            if( targetSavePath ) { 
+            if( targetSavePath ) {
                 this.defaultExportPath = targetSavePath;
 
                 // JSON export - simply move compiled json into place
@@ -337,10 +338,10 @@ InkProject.prototype.export = function(exportType) {
                             }
                         }
 
-                        // JS file: 
+                        // JS file:
                         if( exportType == "js" ) {
                             this.convertJSONToJS(compiledJsonTempPath, targetSavePath);
-                        } 
+                        }
 
                         // JSON: Just copy into place
                         else {
@@ -353,6 +354,12 @@ InkProject.prototype.export = function(exportType) {
                 // Web export
                 else {
                     this.buildForWeb(compiledJsonTempPath, targetSavePath);
+
+                    if( exportType == "lbry" ) {
+                        lbryFormat.packDirectory(targetSavePath, {
+                            fileName: targetSavePath + '.lbry',
+                        });
+                    }
                 }
             }
         });
@@ -365,6 +372,10 @@ InkProject.prototype.exportJson = function() {
 
 InkProject.prototype.exportForWeb = function() {
     this.export("web");
+}
+
+InkProject.prototype.exportForLBRY = function() {
+    this.export("lbry");
 }
 
 InkProject.prototype.exportJSOnly = function() {
@@ -401,7 +412,7 @@ InkProject.prototype.buildForWeb = function(jsonFilePath, targetDirectory) {
 
     // Derive story title from save name
     var storyTitle = path.basename(targetDirectory);
-    
+
     // Unless the writer explicitly provided a tag with the title
     var mainInkTagDict = this.mainInk.symbols.globalDictionaryStyleTags;
     if( mainInkTagDict && mainInkTagDict["title"] ) {
@@ -418,26 +429,26 @@ InkProject.prototype.buildForWeb = function(jsonFilePath, targetDirectory) {
     // Copy index.html:
     //  - inserting the filename as the <title> and <h1>
     //  - Inserting the correct name of the javascript file
-    copyFile(path.join(templateDir, "index.html"), 
-             path.join(targetDirectory, "index.html"), 
+    copyFile(path.join(templateDir, "index.html"),
+             path.join(targetDirectory, "index.html"),
              (fileContent) => {
         fileContent = fileContent.replace(/##STORY TITLE##/g, storyTitle);
         fileContent = fileContent.replace(/##JAVASCRIPT FILENAME##/g, this.jsFilename());
         return fileContent;
     });
 
-    
+
 
     // Copy other files verbatim
-    // copyFile(path.join(__dirname, "../node_modules/inkjs/dist/ink.js"), 
+    // copyFile(path.join(__dirname, "../node_modules/inkjs/dist/ink.js"),
     //          path.join(targetDirectory, "ink.js"));
-    copyFile(path.join(templateDir, "hacked-inkjs-1.7.1.js"), 
+    copyFile(path.join(templateDir, "hacked-inkjs-1.7.1.js"),
             path.join(targetDirectory, "ink.js"));
 
-    copyFile(path.join(templateDir, "style.css"), 
+    copyFile(path.join(templateDir, "style.css"),
              path.join(targetDirectory, "style.css"));
 
-    copyFile(path.join(templateDir, "main.js"), 
+    copyFile(path.join(templateDir, "main.js"),
          path.join(targetDirectory, "main.js"));
 }
 
@@ -467,11 +478,11 @@ InkProject.prototype.tryClose = function() {
             }
 
             // Cancel
-            else { 
+            else {
                 ipc.send("project-cancelled-close");
             }
         });
-    } 
+    }
 
     // Nothing to save, just exit
     else {
@@ -563,7 +574,7 @@ InkProject.prototype.findSymbol = function(name, posContext) {
             }
         }
     }
-    
+
     if( !baseSymbol ) {
         console.log("Failed to find base symbol: "+baseName);
         return null;
@@ -578,7 +589,7 @@ InkProject.prototype.findSymbol = function(name, posContext) {
             console.log("Failed to find complete path due to not finding: "+tailComp);
             return symbol;
         }
-        
+
         symbol = tailSymbol;
     }
 
@@ -662,6 +673,12 @@ ipc.on("project-export", (event) => {
 ipc.on("project-export-for-web", (event) => {
     if( InkProject.currentProject ) {
         InkProject.currentProject.exportForWeb();
+    }
+});
+
+ipc.on("project-export-for-lbry", (event) => {
+    if( InkProject.currentProject ) {
+        InkProject.currentProject.exportForLBRY();
     }
 });
 

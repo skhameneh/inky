@@ -73,7 +73,12 @@ app.on('ready', function () {
         exportForWeb: () => {
             if( inkJSNeedsUpdating() ) return;
             var win = ProjectWindow.focused();
-            if (win) win.exportForWeb();
+            if (win) win.exportForLBRY();
+        },
+        exportForLBRY: () => {
+            if( inkJSNeedsUpdating() ) return;
+            var win = ProjectWindow.focused();
+            if (win) win.exportForLBRY();
         },
         exportJSOnly: () => {
             if( inkJSNeedsUpdating() ) return;

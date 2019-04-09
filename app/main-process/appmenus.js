@@ -52,6 +52,11 @@ function setupMenus(callbacks) {
           click: callbacks.exportForWeb
         },
         {
+          label: 'Export for LBRY...',
+          enabled: callbacks.isFocusedWindow,
+          click: callbacks.exportForLBRY
+        },
+        {
           label: 'Export story.js only...',
           accelerator: 'CmdOrCtrl+Alt+S',
           enabled: callbacks.isFocusedWindow,
@@ -261,7 +266,7 @@ function setupMenus(callbacks) {
         },
       ]
     });
-    
+
     var windowMenu = _.find(template, menu => menu.role == "window");
     windowMenu.submenu.push(
       {
